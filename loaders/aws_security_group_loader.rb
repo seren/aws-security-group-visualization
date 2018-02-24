@@ -8,7 +8,7 @@
 class AwsSecurityGroupLoader < Loader
 
   def initialize(args = {})
-    @ec2 = connect_to_aws(args)
+    @ec2, @elb, @rds = connect_to_aws(args)
     @vpc_name_cache = nil
     super
   end
@@ -21,7 +21,11 @@ class AwsSecurityGroupLoader < Loader
       Aws.config.update(access_key_id: args[:aws_access_key_id], secret_access_key: args[:aws_secret_access_key])
     end
     # Aws.config.update(logger: Logger.new($stdout))
-    Aws::EC2::Resource.new(region: args[:region])
+    [
+      Aws::EC2::Resource.new(region: args[:region]),
+      Aws::ELB::Resource.new(region: args[:region]),
+      Aws::RDS::Resource.new(region: args[:region])
+    ]
   end
 
 
@@ -47,13 +51,21 @@ class AwsSecurityGroupLoader < Loader
         else
           # If AWS group...
           src_node_owner_id = p.user_id_group_pairs.first.user_id
+          # If the groups are within the same account...
           if dst_node.owner_id == src_node_owner_id
             src_node_owner_id = p.user_id_group_pairs.first.user_id
             src_node_uid = p.user_id_group_pairs.first.group_id
-            src_node_name = p.user_id_group_pairs.first.group_name || src_node_uid
-            binding.pry if groups[src_node_uid].nil?
+            src_node_name = groups[src_node_uid].group_name || src_node_uid
+            if groups[src_node_uid].nil?
+              raise "Group '#{src_node_uid}' is not in our list of security groups, even though it was referenced by '#{dst_node_uid}'."
+            end
             cluster_id = groups[src_node_uid].vpc_id || 'classic'
+          # The groups are in different accounts
           else
+            if p.user_id_group_pairs.first.peering_status == 'deleted'
+              puts "WARNING: Outdated permission found in group '#{dst_node_name}' (#{dst_node_uid}) to group #{p.user_id_group_pairs.first.group_id} in vpc '#{p.user_id_group_pairs.first.vpc_id}'. Peering has been deleted."
+              next
+            end
             src_node_owner_id = p.user_id_group_pairs.first.user_id
             src_node_id = p.user_id_group_pairs.first.group_id
             src_node_uid = src_node_owner_id + '/' + src_node_id

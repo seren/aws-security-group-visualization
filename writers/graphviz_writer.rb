@@ -255,12 +255,12 @@ class GraphvizWriter
     filename_no_extension = port_and_proto_file_name.to_s
     filepath_no_extension = "#{@output_dir}/#{filename_no_extension}"
     FileUtils.mkdir_p(@output_dir)
+    g, graphed_nodes, _graphed_edges = create_graphviz_for_similar_edges(properties_uid)
     if edge_count > max_edge_count
       puts "Skipping creating graph for #{filename_no_extension} with #{node_count}/#{nodes.count} nodes and #{edge_count}/#{@edges.count} edges. Too many edges (it would take forever and the graph would be unusable)"
       # copy no-image-available-too-many-edges.png "#{filepath_no_extension}.png")
     else
       puts "Creating graph for #{filename_no_extension} with #{node_count}/#{nodes.count} nodes and #{edge_count}/#{@edges.count} edges..."
-      g, graphed_nodes, _graphed_edges = create_graphviz_for_similar_edges(properties_uid)
       write_out_asset_files(g, filepath_no_extension)
     end
     File.open("#{filepath_no_extension}.html", 'w') do |f|
@@ -273,8 +273,8 @@ class GraphvizWriter
       else
         f.puts image_with_map(filename_no_extension, filepath_no_extension)
         # We don't bother generating edge links since there's only one on this page
-        f.puts node_links_footer(graphed_nodes)
       end
+      f.puts node_links_footer(graphed_nodes)
       f.puts page_footer
       f.puts '</body></html>'
     end
@@ -321,6 +321,7 @@ class GraphvizWriter
     filepath_no_extension = "#{@output_dir}/#{filename_no_extension}"
     FileUtils.mkdir_p(@output_dir)
     edge_count = edges.count
+    g, graphed_nodes, graphed_edges = create_graphviz
     if edge_count > max_edge_count
       puts "Skipping creating graph for #{filename_no_extension} with #{nodes.count} nodes and #{edges.count} edges. Too many edges (it would take forever and the graph would be unusable)"
     else
@@ -337,8 +338,8 @@ class GraphvizWriter
         f.puts "<h2>Image not available. Too many edges(#{edge_count}) to display.</h2>"
       else
         f.puts image_with_map(filename_no_extension, filepath_no_extension)
-        f.puts node_and_edge_links_footer(graphed_nodes, graphed_edges, @min_depth)
       end
+      f.puts node_and_edge_links_footer(graphed_nodes, graphed_edges, @min_depth)
       f.puts page_footer
       f.puts '</body></html>'
     end
@@ -365,7 +366,7 @@ class GraphvizWriter
   # Generate links to the pages for the nodes in the argument array at the current depth
   def node_links_footer(ns, current_depth=@min_depth)
     str  = '<div style="font-size: 62.5%;">'
-    str += '<br><br><b>Nodes:</b><br>\n'
+    str += "<br><br><b>Nodes:</b><br>\n"
     str += ns.sort_by { |n| n.name }.flatten.uniq.map { |n| "<a href='#{n.url(current_depth)}'>#{n.name} (#{n.uid})</a>" }.join("<br>\n")
     str += '</div>'
   end
@@ -373,7 +374,7 @@ class GraphvizWriter
   # Generate links to the pages for the edges in the argument array
   def edge_links_footer(es)
     str  = '<div style="font-size: 62.5%;">'
-    str += '<br><br><b>Edges:</b><br>\n'
+    str += "<br><br><b>Edges:</b><br>\n"
     # Multiple edges map to the same port-protocol file, so make sure we don't print dups
     str += es.sort_by(&:uid).flatten.map { |e| "<a href='#{e.url}'>#{e.properties_uid}</a>" }.uniq.join("<br>\n")
     str += '</div>'

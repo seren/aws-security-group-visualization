@@ -1,15 +1,15 @@
-# nodes == ec2 instances or CIDR addresses (or security groups outside the account )
+# nodes == rds instances or CIDR addresses (or security groups outside the account )
 # edges == permissions between instances/addresses/external-security-groups as defined by the assigned security groups
 # clusters == vpc/internet/classic/external-account: location/owner of the instance/cidr/external-security-group
 
-class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
+class AwsRdsInstancesSecurityGroupLoader < AwsSecurityGroupLoader
 
   def instance_name(i)
     i.tags.select { |t| t.key == 'Name'}.first&.value || i.id
   end
 
   def load_groups
-    insts = @ec2.instances
+    insts = @rds.db_instances
     ## build a sg-id -> sg lookup table
     sg_map = @ec2.security_groups.inject({}) {|h, sg| h[sg.id]=sg; h }
 
@@ -17,8 +17,8 @@ class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
     # initialize a hash of all groups with empty sets as values
     instance_groups = Hash[sg_map.keys.map { |s| [s, Set.new] }]
     insts.each do |i|
-      i.security_groups.each do |g|
-        gid = g.group.id
+      i.vpc_security_groups.each do |sg_struct|
+        gid = sg_struct['vpc_security_group_id']
         if instance_groups[gid].nil?
           raise "ERROR: Security group '#{gid}' on instances '#{i.id}' doesn't seem to exist in the list of all valid EC2 security groups."
         end
@@ -26,17 +26,17 @@ class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
       end
     end
 
+
     # Take an instance, add it as a node, go through each perm in each group,
     # and add an edge between that instance and the instances that have the source perm.
     # Append the sec-group to the edge's metadata so we know where the permission came from
     puts insts
     insts.each do |i|
       cluster_id = i.vpc_id || 'classic'
-      dst_node = add_inst_node(i.id, instance_name(i), cluster_id, 'instance', i)
-      # dst_node = add_inst_node(dst_node_uid, dst_node_name, cluster_id, i.type, i)
+      dst_node = add_inst_node(i.id, instance_name(i), cluster_id, 'rds', i)
       dst_node.owner_id = ''
 
-      sgs = i.security_groups.map { |g| sg_map[g.group_id] }
+      sgs = i.vpc_security_groups.map { |g| sg_map[g['vpc_security_group_id']] }
 
       sgs.each do |sg|
         sg.ip_permissions.each do |p|

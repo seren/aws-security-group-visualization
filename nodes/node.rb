@@ -6,7 +6,7 @@ class Node
     @name = name
     @outgoing_edges = {}
     @incoming_edges = {}
-    @clusters = Set.new()
+    @clusters = Set.new() # could be multiple (eg. vpc, account, type)
   end
 
   def edges

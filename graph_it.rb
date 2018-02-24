@@ -13,28 +13,28 @@ require 'ostruct'
 require 'yaml'
 require 'fileutils'
 require 'pry'
-require 'aws-sdk'
 require 'logger'
 
 
-require_relative 'manager'
+require_relative 'lib/manager'
 
-require_relative 'edges/edge'
-require_relative 'edges/ec2_security_group_edge'
-require_relative 'edges/ec2_security_group_instance_edge'
+require_relative 'lib/edges/edge'
+require_relative 'lib/edges/ec2_security_group_edge'
+require_relative 'lib/edges/ec2_security_group_instance_edge'
 
-require_relative 'nodes/node'
-require_relative 'nodes/ec2_security_group_node'
+require_relative 'lib/nodes/node'
+require_relative 'lib/nodes/ec2_security_group_node'
 
-require_relative 'loaders/generic_loader'
-require_relative 'loaders/aws_security_group_loader'
-require_relative 'loaders/aws_instances_security_group_loader'
-require_relative 'loaders/manual_aws_security_group_loader'
-require_relative 'loaders/manual_aws_instances_security_group_loader'
+require_relative 'lib/loaders/generic_loader'
+require_relative 'lib/loaders/aws_security_group_loader'
+require_relative 'lib/loaders/aws_ec2_instances_security_group_loader'
+require_relative 'lib/loaders/aws_rds_instances_security_group_loader'
+require_relative 'lib/loaders/manual_aws_security_group_loader'
+require_relative 'lib/loaders/manual_aws_instances_security_group_loader'
 
-require_relative 'writers/graphviz_writer'
+require_relative 'lib/writers/graphviz_writer'
 
-Dir[File.dirname(__FILE__) + "/loaders/dummy_classes/*.rb"].each {|file| require file }
+Dir[File.dirname(__FILE__) + "/lib/loaders/dummy_classes/*.rb"].each {|file| require file }
 
 options = OpenStruct.new
 OptionParser.new do |opt|
@@ -44,11 +44,15 @@ end.parse!
 
 account = 'default'
 
-graph_types = [:security_groups, :instance_security_groups]
-graph_types = [:manual, :instance_manual]
+graph_types = []
+graph_types += [:security_groups]
+graph_types += [:instance_security_groups]
+# graph_types += [:manual]
+# graph_types += [:instance_manual]
+# graph_types += [:manual]
 
-options.output_dir ||= File.join(Dir.pwd, '/html-output')
 graph_types.each do |type|
+    output_dir = options.output_dir || File.join(Dir.pwd, '/html-output/', type.to_s)
 
     # config yaml files contain :region and :profile (or :aws_access_key_id and :aws_access_key_id)
     options.config_file ||= "config/#{account}.yml"
@@ -57,6 +61,6 @@ graph_types.each do |type|
     man = Manager.new(configuration)
     man.load(type)
 
-    man.output_clustered(options.output_dir)
-    man.output_non_clustered(options.output_dir)
+    man.output_clustered(output_dir)
+    man.output_non_clustered(output_dir)
 end

@@ -11,17 +11,23 @@ class Manager
 
   def load(type=:manual)
     credentials = @opts
-    loader = case type
+    loaders = case type
     when :security_groups
-      AwsSecurityGroupLoader.new(credentials)
+      [ AwsSecurityGroupLoader.new(credentials) ]
     when :instance_security_groups
-      AwsInstancesSecurityGroupLoader.new(credentials)
+      [ AwsEc2InstancesSecurityGroupLoader.new(credentials),
+        AwsRdsInstancesSecurityGroupLoader.new(credentials) ]
     when :manual
-      ManualAwsSecurityGroupLoader.new(credentials)
+      [ ManualAwsSecurityGroupLoader.new(credentials) ]
     when :instance_manual
-      ManualAwsInstancesSecurityGroupLoader.new(credentials)
+      [ ManualAwsInstancesSecurityGroupLoader.new(credentials) ]
     end
-    @nodes, @edges, @clusters = loader.load_groups
+    loaders.each do |loader|
+      nodes, edges, clusteres = loader.load_groups
+      @nodes += nodes
+      @edges += edges
+      @clusters += clusters
+    end
   end
 
   def type_to_shape_mapping
