@@ -18,7 +18,7 @@ class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
     instance_groups = Hash[sg_map.keys.map { |s| [s, Set.new] }]
     insts.each do |i|
       i.security_groups.each do |g|
-        gid = g.group.id
+        gid = g.group_id
         if instance_groups[gid].nil?
           raise "ERROR: Security group '#{gid}' on instances '#{i.id}' doesn't seem to exist in the list of all valid EC2 security groups."
         end

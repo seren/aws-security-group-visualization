@@ -56,11 +56,11 @@ class Ec2SecurityGroupEdge < Edge
 
   # Combination of edge properties and node properties. Intended to uniquely id an edge
   def uid
-    tn_uid = tail_node ? tail_node.uid+'-' : ''
-    hn_uid = head_node ? head_node.uid+'-' : ''
-    tn_vpcid = tail_node && tail_node.vpc_id&+'-' || ''
-    hn_vpcid = head_node && head_node.vpc_id&+'-' || ''
-    "tail-#{tn_vpcid}#{tn_uid}_head-#{hn_vpcid}#{hn_uid}_ports-#{port_start}-to-#{port_end}_proto-#{protocol || 'none'}"
+    tail_node_uid = tail_node ? tail_node.uid : ''
+    head_nade_uid = head_node ? head_node.uid : ''
+    tail_node_vpcid = tail_node && tail_node.vpc_id&+'-' || ''
+    head_nade_vpcid = head_node && head_node.vpc_id&+'-' || ''
+    "tail-#{tail_node_vpcid}#{tail_node_uid}_head-#{head_nade_vpcid}#{head_nade_uid}_ports-#{port_start}-to-#{port_end}_proto-#{protocol || 'none'}"
   end
 
   # Like uid, but doesn't include the node uids

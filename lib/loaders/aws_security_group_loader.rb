@@ -8,7 +8,7 @@
 class AwsSecurityGroupLoader < Loader
 
   def initialize(args = {})
-    @ec2, @elb, @rds = connect_to_aws(args)
+    @ec2, @elb, @rds, @sts = connect_to_aws(args)
     @vpc_name_cache = nil
     super
   end
@@ -23,8 +23,9 @@ class AwsSecurityGroupLoader < Loader
     # Aws.config.update(logger: Logger.new($stdout))
     [
       Aws::EC2::Resource.new(region: args[:region]),
-      Aws::ELB::Resource.new(region: args[:region]),
-      Aws::RDS::Resource.new(region: args[:region])
+      Aws::ElasticLoadBalancingV2::Resource.new(region: args[:region]),
+      Aws::RDS::Resource.new(region: args[:region]),
+      Aws::STS::Client.new(region: args[:region])
     ]
   end
 

@@ -7,6 +7,7 @@ class Manager
     @opts = args
     @nodes = {}
     @edges = {}
+    @clusters = {}
   end
 
   def load(type=:manual)
@@ -15,18 +16,19 @@ class Manager
     when :security_groups
       [ AwsSecurityGroupLoader.new(credentials) ]
     when :instance_security_groups
-      [ AwsEc2InstancesSecurityGroupLoader.new(credentials),
-        AwsRdsInstancesSecurityGroupLoader.new(credentials) ]
+      [ AwsAllInstancesSecurityGroupLoader.new(credentials) ]
+    when :instance_security_groups
+      [ AwsEc2InstancesSecurityGroupLoader.new(credentials) ]
     when :manual
       [ ManualAwsSecurityGroupLoader.new(credentials) ]
     when :instance_manual
       [ ManualAwsInstancesSecurityGroupLoader.new(credentials) ]
     end
     loaders.each do |loader|
-      nodes, edges, clusteres = loader.load_groups
-      @nodes += nodes
-      @edges += edges
-      @clusters += clusters
+      nodes, edges, clusters = loader.load_groups
+      @nodes.merge!(nodes)
+      @edges.merge!(edges)
+      @clusters.merge!(clusters)
     end
   end
 

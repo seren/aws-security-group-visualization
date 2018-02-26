@@ -14,6 +14,7 @@ require 'yaml'
 require 'fileutils'
 require 'pry'
 require 'logger'
+require 'aws-sdk'
 
 
 require_relative 'lib/manager'
@@ -29,6 +30,7 @@ require_relative 'lib/loaders/generic_loader'
 require_relative 'lib/loaders/aws_security_group_loader'
 require_relative 'lib/loaders/aws_ec2_instances_security_group_loader'
 require_relative 'lib/loaders/aws_rds_instances_security_group_loader'
+require_relative 'lib/loaders/aws_all_instances_security_group_loader'
 require_relative 'lib/loaders/manual_aws_security_group_loader'
 require_relative 'lib/loaders/manual_aws_instances_security_group_loader'
 
