@@ -33,7 +33,6 @@ class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
     insts.each do |i|
       cluster_id = i.vpc_id || 'classic'
       dst_node = add_inst_node(i.id, instance_name(i), cluster_id, 'instance', i)
-      # dst_node = add_inst_node(dst_node_uid, dst_node_name, cluster_id, i.type, i)
       dst_node.owner_id = ''
 
       sgs = i.security_groups.map { |g| sg_map[g.group_id] }
@@ -83,7 +82,6 @@ class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
             src_node_name = instance_name(src_inst)
             cluster_id = src_inst.vpc_id || 'classic'
             src_node = add_inst_node(src_node_uid, src_node_name, cluster_id, 'instance')
-            # src_node = add_inst_node(src_node_uid, src_node_name, cluster_id, src_inst.type)
             add_inst_edge(src_node, dst_node, edge_props, sg)
           end
         end

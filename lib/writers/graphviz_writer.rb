@@ -125,45 +125,6 @@ class GraphvizWriter
 
 
 
-
-
-  def generate_subgraph_clusters_old(g)
-
-    # Creates a graphviz cluster
-    create_subgraph = lambda { |graph, subgraph_name| graph.add_graph('cluster-' + subgraph_name, label: subgraph_name) }
-
-    # nodes -> subgraph
-    mapping = {}
-    # subgraph_id -> subgraph
-    subgraphs = {
-      'root_graph' => g,
-      'classic' => create_subgraph(g, 'classic'),
-      'internet' => create_subgraph(g, 'internet')
-    }
-
-    @nodes.values.each do |n|
-      unless @use_subgraphs
-        mapping[n] = g
-        next
-      end
-
-      if n.vpc_id.nil? # not a vpc group
-        mapping[n] = subgraphs[n.cidr? ? 'internet' : 'classic']
-        next
-      end
-
-      # create the subgraph if necessary
-      subgraphs[n.vpc_id] ||= create_subgraph(g, vpc_name(n.vpc_id))
-      # add the subgraph ref to the node
-      mapping[n] = subgraphs[n.vpc_id]
-      # Debugging: We should always be able to find a subgraph entry for the vpc_id. If not, investigate
-      raise "We couldn't find a subgraph entry for vpc_id #{n}. Mappings: #{mapping}" if mapping[n].nil?
-    end
-
-    mapping
-  end
-
-
   # Creates a graphviz graph from arrays of nodes and edges
   # If starting_node is provided, then only display nodes up to <depth> degree away
   def create_graphviz(starting_node = nil, depth = @min_depth)

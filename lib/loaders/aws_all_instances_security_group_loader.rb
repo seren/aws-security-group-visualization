@@ -90,25 +90,7 @@ class AwsAllInstancesSecurityGroupLoader < AwsSecurityGroupLoader
 
           # If permission from an AWS group that we own, create connections to each instance that has that group assigned
           instance_sgs[p.user_id_group_pairs.first.group_id].each do |src_i|
-            # if src_i.id == 'globus-web-preview'
-            #   binding.pry
-            # end
-            # if src_i.id == 'arn:aws:elasticloadbalancing:us-east-1:303064072663:loadbalancer/app/globus-web-preview/f0810a5577866ada'
-            #   binding.pry
-            # end
-            # if src_i.uid == 'globus-web-preview'
-            #   binding.pry
-            # end
-            # if src_i.uid == 'arn:aws:elasticloadbalancing:us-east-1:303064072663:loadbalancer/app/globus-web-preview/f0810a5577866ada'
-            #   binding.pry
-            # end
-            # unless insts_map.has_key? src_i.uid
-            #   puts "Hmm, creating a new node for instance uid:#{src_i.uid}, id:#{src_i.id}, name#{src_i.name}"
-            #   binding.pry
-            # end
-
             src_node = add_inst_node(src_i,  insts_map[src_i.uid].type)
-            # src_node = add_inst_node(src_node_uid, src_node_name, cluster_id, src_inst.type)
             add_inst_edge(src_node, dst_node, edge_props, sg)
           end
         end
@@ -123,11 +105,6 @@ class AwsAllInstancesSecurityGroupLoader < AwsSecurityGroupLoader
   def add_inst_edge(tail_node, head_node, edge_props, edge_data_source)
     add_sg_edge(tail_node, head_node, edge_props, edge_data_source, Ec2SecurityGroupInstanceEdge)
   end
-
-  # def add_inst_node(uid, name, cluster_id, type)
-  #   puts ""
-  #   add_sg_node(uid, name, cluster_id, type)
-  # end
 
   def add_inst_node(inst, type=inst.type)
     puts ""
