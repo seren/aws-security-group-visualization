@@ -56,11 +56,6 @@ class Manager
     output_clustered_or_not(output_dir, false)
   end
 
-  def output_everything_graphs(output_dir)
-    GraphvizWriter.new(@nodes, @edges, @clusters, {use_subgraphs: true, output_dir: File.join(output_dir, 'clustered')}).output_files_for_complete_graph
-    GraphvizWriter.new(@nodes, @edges, @clusters, {use_subgraphs: false, output_dir: File.join(output_dir, 'non-clustered')}).output_files_for_complete_graph
-  end
-
   private
 
   def output_clustered_or_not(output_dir, clustered)
