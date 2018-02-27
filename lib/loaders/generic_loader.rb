@@ -33,7 +33,7 @@ class Loader
   end
 
   def add_node(uid, name, type, node_class=Node)
-    puts "Adding node #{uid} (#{name})"
+    puts "Adding #{type} node #{uid} (#{name})"
     if @nodes[uid]
       puts "Node already exists. Uid: " + uid
       # sanity check

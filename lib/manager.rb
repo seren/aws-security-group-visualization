@@ -17,8 +17,6 @@ class Manager
       [ AwsSecurityGroupLoader.new(credentials) ]
     when :instance_security_groups
       [ AwsAllInstancesSecurityGroupLoader.new(credentials) ]
-    when :instance_security_groups
-      [ AwsEc2InstancesSecurityGroupLoader.new(credentials) ]
     when :manual
       [ ManualAwsSecurityGroupLoader.new(credentials) ]
     when :instance_manual

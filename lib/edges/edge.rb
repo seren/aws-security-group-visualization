@@ -22,7 +22,7 @@ class Edge
   end
 
   def sanitize_filename(fn)
-    fn.gsub(%r{[/\\.]}, '_')
+    fn.gsub(%r{[/\\.:]}, '_')
   end
 
   def file_name

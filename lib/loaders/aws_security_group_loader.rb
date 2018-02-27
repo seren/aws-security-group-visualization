@@ -23,7 +23,7 @@ class AwsSecurityGroupLoader < Loader
     # Aws.config.update(logger: Logger.new($stdout))
     [
       Aws::EC2::Resource.new(region: args[:region]),
-      Aws::ElasticLoadBalancingV2::Resource.new(region: args[:region]),
+      Aws::ElasticLoadBalancingV2::Client.new(region: args[:region]),
       Aws::RDS::Resource.new(region: args[:region]),
       Aws::STS::Client.new(region: args[:region])
     ]

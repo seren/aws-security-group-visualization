@@ -300,8 +300,8 @@ class GraphvizWriter
       FileUtils.mkdir_p(@output_dir)
       write_out_asset_files(g, filepath_no_extension)
       File.open("#{filepath_no_extension}.html", 'w') do |f|
-        f.puts "<html><head><title>#{node.name+' '+node.uid}</title></head><body>"
-        f.puts "<h3>#{node.name+' '+node.uid}</h3>"
+        f.puts "<html><head><title>#{node.name} (#{node.uid})</title></head><body>"
+        f.puts "<h3>#{node.name} (#{node.uid})</h3>"
         f.puts page_header("#{filename_no_extension}.html")
         if depth != maxdepth
           f.puts ' | Depth: ' + (@min_depth..maxdepth).map { |d| d == current_depth ? d : "<a href=\"#{node.url(d)}\">#{d}</a>" }.join(' ')

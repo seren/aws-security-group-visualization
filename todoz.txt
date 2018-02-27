@@ -1,0 +1,15 @@
+add security group ids to text links at bottom
+rename stuff like 'node_from_" to "source_node_"
+
+
+do we graph instances and groups that don't connect to others?
+
+
+-----------------
+For generating directly from EC2, why do some security groups not have names? (ex. sg-fa5e0189)
+
+
+--------------
+In the security group loader and children, break out the creation of node from the creation of edges, so that we can create nodes from multiple sources before trying to make edges between them
+
+Restructure: First create the most basic graph (eg. security group relations), then use it and an entity relation map (instances -> [sgs]) to form a new higher-level graph
