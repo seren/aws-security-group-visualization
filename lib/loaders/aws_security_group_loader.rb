@@ -108,14 +108,14 @@ class AwsSecurityGroupLoader < Loader
     e
   end
 
-  def add_sg_node(uid, name, cluster_id, type)
+  def add_sg_node(uid, name, vpc_id, type)
     n = add_node(uid, name, type, Ec2SecurityGroupNode)
-    if cluster_id
-      puts "adding cluster_id '#{cluster_id}' to node #{uid}"
-      n.add_cluster(cluster_id)
-      @clusters[cluster_id] = vpc_name(cluster_id) || cluster_id
+    if vpc_id
+      puts "adding cluster '#{vpc_id}' to node #{uid}"
+      n.add_cluster(vpc_id, 'vpc')
+      @clusters['vpc'][vpc_id] = vpc_name(vpc_id) || vpc_id
     else
-      puts "no cluster_id for node #{uid}"
+      puts "no vpc_id for node #{uid}"
       binding.pry
     end
     n

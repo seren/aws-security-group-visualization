@@ -108,7 +108,7 @@ class AwsAllInstancesSecurityGroupLoader < AwsSecurityGroupLoader
 
   def add_inst_node(inst, type=inst.type)
     puts ""
-    add_sg_node(type + '_' + inst.uid, inst.name, inst.cluster_id, type)
+    add_sg_node(type + '_' + inst.uid, inst.name, inst.vpc_id, type)
   end
 
 

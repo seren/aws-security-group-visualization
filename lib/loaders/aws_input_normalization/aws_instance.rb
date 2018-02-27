@@ -19,7 +19,7 @@ class AwsInstance
       "This #{self.class} cannot respond to:"
   end
 
-  def cluster_id
+  def vpc_id
     raise NotImplementedError,
       "This #{self.class} cannot respond to:"
   end

@@ -1,9 +1,9 @@
 class Ec2Instance < AwsInstance
-  attr_accessor :src_obj, :type, :cluster_id, :id, :uid, :name, :security_groups
+  attr_accessor :src_obj, :type, :vpc_id, :id, :uid, :name, :security_groups
   def initialize(src, all_sgs, current_account_id)
     @src_obj = src
     @type = 'instance'
-    @cluster_id =  src.vpc_id || 'classic'
+    @vpc_id =  src.vpc_id || 'classic'
     @account_id = current_account_id
     @uid = @account_id + '/' + src.id
     @id = src.id

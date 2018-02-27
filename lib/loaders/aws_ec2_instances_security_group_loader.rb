@@ -31,8 +31,7 @@ class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
     # Append the sec-group to the edge's metadata so we know where the permission came from
     puts insts
     insts.each do |i|
-      cluster_id = i.vpc_id || 'classic'
-      dst_node = add_inst_node(i.id, instance_name(i), cluster_id, 'instance', i)
+      dst_node = add_inst_node(i.id, instance_name(i), i.vpc_id || 'classic', 'instance', i)
       dst_node.owner_id = ''
 
       sgs = i.security_groups.map { |g| sg_map[g.group_id] }
@@ -70,8 +69,7 @@ class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
             src_node_id = p.user_id_group_pairs.first.group_id
             src_node_uid = src_node_owner_id + '/' + src_node_id
             src_node_name = src_node_owner_id + '/' + ( p.user_id_group_pairs.first.group_name || src_node_id )
-            cluster_id = "account-#{src_node_owner_id}"
-            src_node = add_inst_node(src_node_uid, src_node_name, cluster_id, 'external-security-group')
+            src_node = add_inst_node(src_node_uid, src_node_name, "account-#{src_node_owner_id}", 'external-security-group')
             add_inst_edge(src_node, dst_node, edge_props, sg)
             next
           end
@@ -80,8 +78,7 @@ class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
           instance_groups[p.user_id_group_pairs.first.group_id].each do |src_inst|
             src_node_uid = src_inst.id
             src_node_name = instance_name(src_inst)
-            cluster_id = src_inst.vpc_id || 'classic'
-            src_node = add_inst_node(src_node_uid, src_node_name, cluster_id, 'instance')
+            src_node = add_inst_node(src_node_uid, src_node_name, src_inst.vpc_id || 'classic', 'instance')
             add_inst_edge(src_node, dst_node, edge_props, sg)
           end
         end
@@ -96,8 +93,8 @@ class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
     add_sg_edge(tail_node, head_node, edge_props, edge_data_source, Ec2SecurityGroupInstanceEdge)
   end
 
-  def add_inst_node(uid, name, cluster_id, type, inst=nil)
-    add_sg_node(uid, name, cluster_id, type)
+  def add_inst_node(uid, name, vpc_id, type, inst=nil)
+    add_sg_node(uid, name, vpc_id, type)
   end
 
 
