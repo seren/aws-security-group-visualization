@@ -21,7 +21,10 @@ class AwsAllInstancesSecurityGroupLoader < AwsSecurityGroupLoader
     # Gather AWS entity info from multiple sources
     insts = @ec2.instances.map { |i| Ec2Instance.new(i, sg_map, current_account_id) }
     insts += @rds.db_instances.map { |i| RdsInstance.new(i, sg_map, current_account_id) }  # Note, names are not guarenteed to be unique across accounts
-    insts += @elb.describe_load_balancers['load_balancers'].map { |i| ElbInstance.new(i, sg_map, current_account_id) }  # Note, names are not guarenteed to be unique across accounts
+    # Get classic ELBs
+    insts += @elb1.describe_load_balancers['load_balancer_descriptions'].map { |i| ElbInstance.new(i, sg_map, current_account_id) }  # Note, names are not guarenteed to be unique across accounts
+    # Get application and network LBs
+    insts += @elb2.describe_load_balancers['load_balancers'].map { |i| ElbInstance.new(i, sg_map, current_account_id) }  # Note, names are not guarenteed to be unique across accounts
 
     ## build an instance uid -> aws instance lookup table
     insts_map = insts.inject ({}) { |acc, i| acc[i.uid] = i; acc }
@@ -97,7 +100,7 @@ class AwsAllInstancesSecurityGroupLoader < AwsSecurityGroupLoader
       end
     end
     # binding.pry
-    [@nodes, @edges, @clusters]
+    [@nodes, @edges]
   end
 
   private

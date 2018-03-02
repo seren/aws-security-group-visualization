@@ -8,7 +8,6 @@
 class AwsSecurityGroupLoader < Loader
 
   def initialize(args = {})
-    @ec2, @elb, @rds, @sts = connect_to_aws(args)
     @vpc_name_cache = nil
     super
   end
@@ -20,13 +19,15 @@ class AwsSecurityGroupLoader < Loader
     else
       Aws.config.update(access_key_id: args[:aws_access_key_id], secret_access_key: args[:aws_secret_access_key])
     end
-    # Aws.config.update(logger: Logger.new($stdout))
-    [
-      Aws::EC2::Resource.new(region: args[:region]),
-      Aws::ElasticLoadBalancingV2::Client.new(region: args[:region]),
-      Aws::RDS::Resource.new(region: args[:region]),
-      Aws::STS::Client.new(region: args[:region])
-    ]
+    @ec2 = Aws::EC2::Resource.new(region: args[:region])
+    @elb1 = Aws::ElasticLoadBalancing::Client.new(region: args[:region])
+    @elb2 = Aws::ElasticLoadBalancingV2::Client.new(region: args[:region])
+    @rds = Aws::RDS::Resource.new(region: args[:region])
+    @sts = Aws::STS::Client.new(region: args[:region])
+
+
+
+
   end
 
 
@@ -89,7 +90,7 @@ class AwsSecurityGroupLoader < Loader
         add_sg_edge(src_node, dst_node, edge_props, g.id)
       end
     end
-    [@nodes, @edges, @clusters]
+    [@nodes, @edges]
   end
 
   private
@@ -112,8 +113,7 @@ class AwsSecurityGroupLoader < Loader
     n = add_node(uid, name, type, Ec2SecurityGroupNode)
     if vpc_id
       puts "adding cluster '#{vpc_id}' to node #{uid}"
-      n.add_cluster(vpc_id, 'vpc')
-      @clusters['vpc'][vpc_id] = vpc_name(vpc_id) || vpc_id
+      n.add_cluster('vpc', vpc_id, vpc_name(vpc_id) || vpc_id)
     else
       puts "no vpc_id for node #{uid}"
       binding.pry
@@ -122,7 +122,7 @@ class AwsSecurityGroupLoader < Loader
   end
 
   def vpc_name(vpc_id)
-    return id unless @ec2
+    return vpc_id unless @ec2
     @vpc_name_cache ||= @ec2.vpcs.each_with_object({}) do |v, acc|
       nametag = v.tags.select { |t| t.key == 'Name' }.first
       acc[v.id] = nametag ? nametag.value : v.id

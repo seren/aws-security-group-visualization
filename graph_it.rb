@@ -40,7 +40,7 @@ Dir[File.dirname(__FILE__) + "/lib/loaders/dummy_classes/*.rb"].each {|file| req
 options = OpenStruct.new
 OptionParser.new do |opt|
   opt.on('-o', '--output_dir DIRECTORY', 'Directory to write output files to. Default: html-output') { |o| options.output_dir = o }
-  opt.on('-p', '--profile PROFILE', 'Optional: AWS profile to use') { |o| options.profile = o }
+  opt.on('-p', '--profile PROFILE', 'Optional: AWS profile to use. Can be repeated to combine views of multiple profiles') { |o| options.profile_array ||= []; options.profile_array << o }
 end.parse!
 
 account = 'default'
@@ -52,17 +52,15 @@ graph_types += [:security_groups]
 # graph_types += [:instance_manual]
 # graph_types += [:manual]
 
-graph_types.each do |type|
-    output_dir = options.output_dir || File.join(Dir.pwd, '/html-output/', type.to_s)
+man = Manager.new()
 
-
-    configuration = {region: 'us-east-1'}
-    configuration.merge!({profile: options.profile}) if options.profile
+graph_types.each do |graph_type|
+    output_dir = options.output_dir || File.join(Dir.pwd, '/html-output/', graph_type.to_s)
 
     # config yaml files contain :region and :profile (or :aws_access_key_id and :aws_access_key_id)
-    man = Manager.new(configuration)
-    man.load(type)
+    man.opts = {region: 'us-east-1', profile_array: options.profile_array}
+    man.load(graph_type)
 
-    man.output_clustered(output_dir)
-    man.output_non_clustered(output_dir)
+    man.output_clustered(output_dir, graph_type)
+    # man.output_non_clustered(output_dir, graph_type)
 end

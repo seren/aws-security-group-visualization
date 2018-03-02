@@ -6,7 +6,6 @@ class Loader
   def initialize(*)
     @nodes = {}
     @edges = {}
-    @clusters = {}  # cluster_id -> cluster_name  (ex. vpc_id -> vpc_name)
   end
 
   # Needs to be implemented
@@ -42,7 +41,7 @@ class Loader
       end
       @nodes[uid]
     else
-      n = node_class.new(uid, name)
+      n = node_class.new(uid, name, type)
       n.type = type
       @nodes[n.uid] = n
       n

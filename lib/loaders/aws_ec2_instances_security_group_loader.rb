@@ -84,7 +84,7 @@ class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
         end
       end
     end
-    [@nodes, @edges, @clusters]
+    [@nodes, @edges]
   end
 
   private

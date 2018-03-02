@@ -2,14 +2,15 @@ class GraphvizWriter
   attr_reader :nodes, :edges
   attr_accessor :use_subgraphs, :output_dir
 
-  def initialize(nodes, edges, clusters, args = {})
+  def initialize(nodes, edges, args = {})
     @use_subgraphs = args[:use_subgraphs] || false
+    @subgraphs_of_type = args[:subgraphs_of_type] || 'vpc'
     @output_dir = args[:output_dir] || '/tmp/defaultdir'
     @opts = args
     @nodes = nodes
     @edges = edges
-    @clusters = clusters  # cluster_id -> cluster_name
     @min_depth = 2    # You need a depth of at least two to have edges (depth=1 would just have one node)
+    @cluster_by_default = 'vpc' # The type of grouping to cluster nodes by
   end
 
   def node_page_title(n)
@@ -93,7 +94,9 @@ class GraphvizWriter
   # Subgraphs are graphviz clusters. This function runs through the nodes and
   # generates subgraphs for the clusters that the nodes are members of
   # (ex EC2 Classic, Internet, vpc_id).
-  # It returns a hash mapping node -> subgraph
+  # It doesn't actually populate the subgraph.
+  # It returns {node -> subgraph}
+  # Maybe should be renamed: generate_subgraphs_from_clustered_nodes
   def generate_subgraph_clusters(g)
     # nodes -> subgraph
     mapping = {}
@@ -105,17 +108,22 @@ class GraphvizWriter
       # Just map every node to the main graph
       @nodes.values.each { |n| mapping[n] = g }
     else
+      # Build a master hash of all clusters from the nodes
+      @clusters ||= @nodes.inject({}) { |acc, (id, n)| acc.merge(n.clusters) { |key, a, b| a.merge(b) } }
       # Create subgraphs for each cluster
-      @clusters.each do |c_id, c_name|
+      @clusters[@subgraphs_of_type].each do |c_id, c_name|
         subgraphs[c_id] = g.add_graph('cluster-' + c_name, label: c_name)
       end
 
       @nodes.values.each do |n|
-        raise "Not sure how to deal with nodes that are members of multiple clusters (#{n.uid}: #{n.clusters.to_a})" if n.clusters.size > 1
-        raise "Not sure how to deal with nodes that aren't members of a cluster (#{n.uid})" if n.clusters.empty?
-        raise "Couldn't find a subgraph value for key #{n.clusters.first}" if subgraphs[n.clusters.first].nil?
-        mapping[n] = subgraphs[n.clusters.first]
+        # raise "Not sure how to deal with nodes that are members of multiple clusters (#{n.uid}: #{n.clusters.to_a})" if n.clusters.size > 1
+        raise "Not sure how to deal with nodes that aren't members of a #{@subgraphs_of_type} cluster/subgraph (#{n.uid})" if n.clusters[@subgraphs_of_type].empty?
+        raise "Couldn't find a subgraph value for key #{@subgraphs_of_type} in node #{n.uid}" if subgraphs[n.clusters[@subgraphs_of_type].keys.first].nil?
+        n.clusters[@subgraphs_of_type].each do |c_id, c_name|
+          mapping[n] = subgraphs[c_id]
+        end
       end
+
     end
     mapping
   end
@@ -132,7 +140,6 @@ class GraphvizWriter
     g.edge[:color] = 'grey30'
     g.edge[:fontcolor] = 'blue'
 
-    # Subgraphs = graphviz clusters
     node_to_subgraphs = generate_subgraph_clusters(g)
     if starting_node.nil?
       puts "No starting node. adding everything"

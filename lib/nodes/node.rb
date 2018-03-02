@@ -1,12 +1,12 @@
 class Node
   attr_accessor :uid, :name, :outgoing_edges, :incoming_edges, :clusters, :type
 
-  def initialize(uid, name)
+  def initialize(uid, name, type='generic')
     @uid = uid
     @name = name
     @outgoing_edges = {}
     @incoming_edges = {}
-    @clusters = Set.new() # could be multiple (eg. vpc, account, type)
+    @clusters = {} # could be multiple types with multiple values (eg. vpc, account, type (instance, appserver, t2.small))
   end
 
   def edges
@@ -37,9 +37,10 @@ class Node
     incoming_edges[e.uid] = e unless incoming_edges.include?(e.uid)
   end
 
-  # Add to the list of clusters this node is a member of
-  def add_cluster(c_id)
-    @clusters << c_id
+  # Add to the list of clusters/groupings/types this node is a member of
+  def add_cluster(c_type, c_id, c_name)
+    @clusters[c_type] ||= {}
+    @clusters[c_type][c_id] = c_name
   end
 
   def print

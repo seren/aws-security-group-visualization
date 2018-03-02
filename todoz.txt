@@ -13,3 +13,5 @@ For generating directly from EC2, why do some security groups not have names? (e
 In the security group loader and children, break out the creation of node from the creation of edges, so that we can create nodes from multiple sources before trying to make edges between them
 
 Restructure: First create the most basic graph (eg. security group relations), then use it and an entity relation map (instances -> [sgs]) to form a new higher-level graph
+
+switch "cluster" to "grouping" or "member_of"
