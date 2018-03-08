@@ -70,7 +70,7 @@ class AwsSecurityGroupLoader < Loader
             end
             src_node_owner_id = p.user_id_group_pairs.first.user_id
             src_node_id = p.user_id_group_pairs.first.group_id
-            src_node_uid = src_node_owner_id + '/' + src_node_id
+            src_node_uid = src_node_id
             src_node_name = src_node_owner_id + '/' + ( p.user_id_group_pairs.first.group_name || src_node_id )
             cluster_id = "account-#{src_node_owner_id}"
             puts "account-#{src_node_owner_id} for #{src_node_uid}:#{src_node_name} -> #{dst_node_uid}:#{dst_node_name}"
