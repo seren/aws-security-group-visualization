@@ -5,7 +5,7 @@ class RdsInstance < AwsInstance
     @type = 'rds'
     @vpc_id =  src.subnet_group.vpc_id || 'classic'
     @account_id = current_account_id
-    @uid = @account_id + '/' + src.id
+    @uid = @account_id + '_' + src.id
     @id = src.id
     @name = src.id
     # hash of security group ids to group

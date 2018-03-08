@@ -5,7 +5,7 @@ class Ec2Instance < AwsInstance
     @type = 'instance'
     @vpc_id =  src.vpc_id || 'classic'
     @account_id = current_account_id
-    @uid = @account_id + '/' + src.id
+    @uid = @account_id + '_' + src.id
     @id = src.id
     @name = src.tags.select { |t| t.key == 'Name'}.first&.value || src.id
     @security_groups = src.security_groups.inject({}) { |acc, sg| acc[sg.group_id] = all_sgs[sg.group_id]; acc }

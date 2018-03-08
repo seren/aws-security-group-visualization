@@ -6,7 +6,7 @@ class ExternalInstance < AwsInstance
     @account_id = p.user_id_group_pairs.first.user_id
     @vpc_id = "account-" + p.user_id_group_pairs.first.user_id
     @id = p.user_id_group_pairs.first.group_id
-    @uid = @account_id + '/' + @id
-    @name = @account_id + '/' + ( p.user_id_group_pairs.first.group_name || @id )
+    @uid = @account_id + '_' + @id
+    @name = @account_id + '_' + ( p.user_id_group_pairs.first.group_name || @id )
   end
 end

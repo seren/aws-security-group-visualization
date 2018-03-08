@@ -5,7 +5,7 @@ class ElbInstance < AwsInstance
     @type = 'elb'
     @vpc_id =  src.vpc_id || 'classic'
     @account_id = current_account_id
-    @uid = @account_id + '/' + src.load_balancer_name
+    @uid = @account_id + '_' + src.load_balancer_name
     @id = @uid
     @name = src.load_balancer_name
     # hash of security group ids to group

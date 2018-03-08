@@ -13,7 +13,7 @@ require_relative 'aws_input_normalization/external_instance.rb'
 class AwsAllInstancesSecurityGroupLoader < AwsSecurityGroupLoader
 
   def load_groups
-    current_account_id = @sts.get_caller_identity.account
+    current_account_id = "acct" + @sts.get_caller_identity.account
 
     ## build a sg-id -> sg lookup table
     sg_map = @ec2.security_groups.inject({}) {|h, sg| h[sg.id]=sg; h }
