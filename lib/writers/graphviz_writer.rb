@@ -106,7 +106,7 @@ class GraphvizWriter
 
     unless @use_subgraphs
       # Just map every node to the main graph
-      @nodes.values.each { |n| mapping[n] = g }
+      @nodes.values.each { |n| mapping[n.uid] = g }
     else
       # Build a master hash of all clusters from the nodes
       @clusters ||= @nodes.inject({}) { |acc, (id, n)| acc.merge(n.clusters) { |key, a, b| a.merge(b) } }
@@ -120,7 +120,7 @@ class GraphvizWriter
         raise "Not sure how to deal with nodes that aren't members of a #{@subgraphs_of_type} cluster/subgraph (#{n.uid})" if n.clusters[@subgraphs_of_type].empty?
         raise "Couldn't find a subgraph value for key #{@subgraphs_of_type} in node #{n.uid}" if subgraphs[n.clusters[@subgraphs_of_type].keys.first].nil?
         n.clusters[@subgraphs_of_type].each do |c_id, c_name|
-          mapping[n] = subgraphs[c_id]
+          mapping[n.uid] = subgraphs[c_id]
         end
       end
 
@@ -145,7 +145,7 @@ class GraphvizWriter
       puts "No starting node. adding everything"
       # If no starting node, graph everything
       @nodes.each do |_k, v|
-        node_to_subgraphs[v].add_nodes(v.uid, label: v.name, URL: v.url(depth), shape: node_shape(v) )
+        node_to_subgraphs[v.uid].add_nodes(v.uid, label: v.name, URL: v.url(depth), shape: node_shape(v) )
       end
       @edges.each do |_k, v|
         g.add_edges(v.tail_node.uid, v.head_node.uid, label: v.label, URL: v.url, style: edge_style(v))
@@ -160,7 +160,7 @@ class GraphvizWriter
       graphed_edges = Set.new
 
       # Bootstrap by adding the node at the first level manually
-      node_to_subgraphs[starting_node].add_nodes(starting_node.name, URL: starting_node.url(depth), shape: node_shape(starting_node) ) unless graphed_nodes.add?(starting_node).nil?
+      node_to_subgraphs[starting_node.uid].add_nodes(starting_node.name, URL: starting_node.url(depth), shape: node_shape(starting_node) ) unless graphed_nodes.add?(starting_node).nil?
 
       # Starting at the bootstrapped node at the first level, work our way out to each new level/degree-of-separation
       # Each time through, add the edges in next_nodes and then nodes at the end of the edges (the nodes at the next level)
@@ -175,12 +175,12 @@ class GraphvizWriter
           puts "Adding #{(in_e | out_e).count} edges, #{(in_e - out_e).count} incoming, #{(out_e - in_e).count} outgoing, #{(in_e & out_e).count} both..."
           n.incoming_edges.each do |_k, v|
             graphed_edges.add?(v) && g.add_edges(v.tail_node.name, v.head_node.name, label: v.label, URL: v.url, style: edge_style(v))
-            graphed_nodes.add?(v.tail_node) && node_to_subgraphs[v.tail_node].add_nodes(v.tail_node.name, URL: v.tail_node.url(depth), shape: node_shape(v.tail_node) )
+            graphed_nodes.add?(v.tail_node) && node_to_subgraphs[v.tail_node.uid].add_nodes(v.tail_node.name, URL: v.tail_node.url(depth), shape: node_shape(v.tail_node) )
             next_nodes.add?(v.tail_node) # queue up the node at the next level
           end
           n.outgoing_edges.each do |_k, v|
             graphed_edges.add?(v) && g.add_edges(v.tail_node.name, v.head_node.name, label: v.label, URL: v.url, style: edge_style(v))
-            graphed_nodes.add?(v.head_node) && node_to_subgraphs[v.head_node].add_nodes(v.head_node.name, URL: v.head_node.url(depth), shape: node_shape(v.head_node) )
+            graphed_nodes.add?(v.head_node) && node_to_subgraphs[v.head_node.uid].add_nodes(v.head_node.name, URL: v.head_node.url(depth), shape: node_shape(v.head_node) )
             next_nodes.add?(v.head_node)
           end
         end
@@ -203,8 +203,8 @@ class GraphvizWriter
 
     edge_matches = @edges.select { |_k, v| v.properties_uid == properties_uid }
     edge_matches.each do |_k, v|
-      node_to_subgraphs[v.tail_node].add_nodes(v.tail_node.uid, label: v.tail_node.name, URL: v.tail_node.url(depth), shape: node_shape(v.tail_node) ) unless graphed_nodes.add?(v.tail_node).nil?
-      node_to_subgraphs[v.head_node].add_nodes(v.head_node.uid, label: v.head_node.name, URL: v.head_node.url(depth), shape: node_shape(v.head_node) ) unless graphed_nodes.add?(v.head_node).nil?
+      node_to_subgraphs[v.tail_node.uid].add_nodes(v.tail_node.uid, label: v.tail_node.name, URL: v.tail_node.url(depth), shape: node_shape(v.tail_node) ) unless graphed_nodes.add?(v.tail_node).nil?
+      node_to_subgraphs[v.head_node.uid].add_nodes(v.head_node.uid, label: v.head_node.name, URL: v.head_node.url(depth), shape: node_shape(v.head_node) ) unless graphed_nodes.add?(v.head_node).nil?
       g.add_edges(v.tail_node.uid, v.head_node.uid, label: v.label, URL: v.url, style: edge_style(v)) unless graphed_edges.add?(v).nil?
     end
     [g, graphed_nodes, graphed_edges]
