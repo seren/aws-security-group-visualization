@@ -39,7 +39,7 @@ Dir[File.dirname(__FILE__) + "/lib/loaders/dummy_classes/*.rb"].each {|file| req
 
 options = OpenStruct.new
 OptionParser.new do |opt|
-  opt.on('-o', '--output_dir DIRECTORY', 'Directory to write output files to. Default: html-output') { |o| options.output_dir = o }
+  opt.on('-o', '--output_dir DIRECTORY', 'Directory to write output files to. Default: html-output') { |o| options.output_dir = o || 'html-output' }
   opt.on('-p', '--profile PROFILE', 'Optional: AWS profile to use. Can be repeated to combine views of multiple profiles') { |o| options.profile_array ||= []; options.profile_array << o }
 end.parse!
 
@@ -55,7 +55,7 @@ graph_types += [:security_groups]
 man = Manager.new()
 
 graph_types.each do |graph_type|
-    output_dir = options.output_dir || File.join(Dir.pwd, '/html-output/', graph_type.to_s)
+    output_dir = File.join(Dir.pwd, '/', options.output_dir, '/', graph_type.to_s)
 
     # config yaml files contain :region and :profile (or :aws_access_key_id and :aws_access_key_id)
     man.opts = {region: 'us-east-1', profile_array: options.profile_array}
