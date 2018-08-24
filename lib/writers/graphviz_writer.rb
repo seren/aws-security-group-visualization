@@ -4,7 +4,7 @@ class GraphvizWriter
 
   def initialize(nodes, edges, args = {})
     @use_subgraphs = args[:use_subgraphs] || false
-    @subgraphs_of_type = args[:subgraphs_of_type] || 'vpc'
+    @subgraphs_type = args[:subgraphs_type] || 'vpc'
     @output_dir = args[:output_dir] || '/tmp/defaultdir'
     @opts = args
     @nodes = nodes
@@ -13,10 +13,8 @@ class GraphvizWriter
     @cluster_by_default = 'vpc' # The type of grouping to cluster nodes by
   end
 
-  def node_page_title(n)
-    n.name + ' ' + n.uid
-  end
 
+  ### Graph and component styling ###
 
   # For adding shapes to nodes based on type
   def node_shape(n)
@@ -38,6 +36,16 @@ class GraphvizWriter
       'other' => 'dashed'
     }[e.type]&.to_sym || 'solid'
   end
+
+  def style_the_graph(g)
+    g.edge[:color] = 'grey30'
+    g.edge[:fontcolor] = 'blue'
+    g
+  end
+
+
+
+  ### Metric tracking ###
 
   # Used for metrics and work/time prediction
   def count_nodes_edges_within_level(nodes, edges, starting_node=nil, depth=@min_depth)
@@ -91,128 +99,159 @@ class GraphvizWriter
   end
 
 
-  # Subgraphs are graphviz clusters. This function runs through the nodes and
+
+  ### Graph-building functions ###
+
+
+  # Returns a new empty graph with some customizations
+  def init_graph()
+    g = GraphViz.new('G', rankdir: 'LR', concentrate: 'false', remincross: 'true', ordering: 'out')
+    return style_the_graph(g)
+  end
+
+  # Subgraphs are graphviz "cluster subgraphs". This function runs through the nodes and
   # generates subgraphs for the clusters that the nodes are members of
   # (ex EC2 Classic, Internet, vpc_id).
-  # It doesn't actually populate the subgraph.
+  # It adds the subgraphs to the graphviz graph and returns a mapping of
+  # nodes to subgraphs. It doesn't actually populate the subgraphs.
   # It returns {node -> subgraph}
   # Maybe should be renamed: generate_subgraphs_from_clustered_nodes
-  def generate_subgraph_clusters(g)
-    # nodes -> subgraph
-    mapping = {}
-    # subgraph_id -> subgraph
-    subgraphs = {}
+  def generate_cluster_subgraphs(g)
+    mapping = {}    #       nodes -> subgraph
+    subgraphs = {}  # subgraph_id -> subgraph
 
-
+    # If we're not using subgraphs, just map every node to the main graph and return
     unless @use_subgraphs
-      # Just map every node to the main graph
       @nodes.values.each { |n| mapping[n.uid] = g }
-    else
-      # Build a master hash of all clusters from the nodes
-      @clusters ||= @nodes.inject({}) { |acc, (id, n)| acc.merge(n.clusters) { |key, a, b| a.merge(b) } }
-      # Create subgraphs for each cluster
-      @clusters[@subgraphs_of_type].each do |c_id, c_name|
-        subgraphs[c_id] = g.add_graph('cluster-' + c_name, label: c_name)
-      end
-
-      @nodes.values.each do |n|
-        # raise "Not sure how to deal with nodes that are members of multiple clusters (#{n.uid}: #{n.clusters.to_a})" if n.clusters.size > 1
-        raise "Not sure how to deal with nodes that aren't members of a #{@subgraphs_of_type} cluster/subgraph (#{n.uid})" if n.clusters[@subgraphs_of_type].empty?
-        raise "Couldn't find a subgraph value for key #{@subgraphs_of_type} in node #{n.uid}" if subgraphs[n.clusters[@subgraphs_of_type].keys.first].nil?
-        n.clusters[@subgraphs_of_type].each do |c_id, c_name|
-          mapping[n.uid] = subgraphs[c_id]
-        end
-      end
-
+      return mapping
     end
+
+    # Scan all nodes and build a mapping of all cluster_ids -> clusters
+    @clusters ||= @nodes.inject({}) { |acc, (id, n)| acc.merge(n.clusters) { |key, a, b| a.merge(b) } }
+    # Create a subgraph for each discovered cluster
+    @clusters[@subgraphs_type].each do |c_id, c_name|
+      subgraphs[c_id] = g.add_graph('cluster-' + c_name, label: c_name)
+    end
+
+    # Scan all nodes and build a mapping of all node-uids -> clusters
+    @nodes.values.each do |n|
+      # raise "Not sure how to deal with nodes that are members of multiple clusters (#{n.uid}: #{n.clusters.to_a})" if n.clusters.size > 1
+      raise "Not sure how to deal with nodes that aren't members of a #{@subgraphs_type} cluster/subgraph (#{n.uid})" if n.clusters[@subgraphs_type].empty?
+      raise "Couldn't find a subgraph value for key #{@subgraphs_type} in node #{n.uid}" if subgraphs[n.clusters[@subgraphs_type].keys.first].nil?
+      # Assumes that nodes have one cluster
+      n.clusters[@subgraphs_type].each do |c_id, c_name|
+        mapping[n.uid] = subgraphs[c_id]
+      end
+    end
+
     mapping
   end
 
 
-
-
-
-
-  # Creates a graphviz graph from arrays of nodes and edges
+  # Given arrays of nodes and edges, and an optional starting_node and depth,
+  # outputs a graphviz in-memory graph as well as the sets of edges and nodes
+  # that are present in the graph.
   # If starting_node is provided, then only display nodes up to <depth> degree away
-  def create_graphviz(starting_node = nil, depth = @min_depth)
-    g = GraphViz.new('G', rankdir: 'LR', concentrate: 'false', remincross: 'true', ordering: 'out')
-    g.edge[:color] = 'grey30'
-    g.edge[:fontcolor] = 'blue'
+  def create_graphviz_graph(starting_node = nil, depth = @min_depth)
+    puts ""
+    # adds a node to the various subgraphs and arrays
+    def add_node(n, node_to_subgraphs_map, graphed_nodes, next_nodes, depth, g, starting_node)
+      graphed_nodes.add?(n) && node_to_subgraphs_map[n.uid].add_nodes(n.uid, label: n.name, URL: n.url(depth), shape: node_shape(n) )
+      next_nodes.add?(n) # queue up the node at the next leeel
+    end
 
-    node_to_subgraphs = generate_subgraph_clusters(g)
+    # adds an edge to the various subgraphs and arrays
+    def add_edge(e, graphed_edges, g)
+      graphed_edges.add?(e) && g.add_edges(e.tail_node.uid, e.head_node.uid, label: e.label, URL: e.url, style: edge_style(e))
+      puts e.uid
+    end
+
+    # Give user feedback on the number and type of edges
+    def output_counts(n)
+      in_e = Set.new n.incoming_edges
+      out_e = Set.new n.outgoing_edges
+      puts "Adding #{(in_e | out_e).count} edges, #{(in_e - out_e).count} incoming, #{(out_e - in_e).count} outgoing, #{(in_e & out_e).count} both..."
+    end
+
+    g = init_graph()
+
+    node_to_subgraphs_map = generate_cluster_subgraphs(g)
     if starting_node.nil?
-      puts "No starting node. adding everything"
+      puts "No starting node. Adding everything"
       # If no starting node, graph everything
-      @nodes.each do |_k, v|
-        node_to_subgraphs[v.uid].add_nodes(v.uid, label: v.name, URL: v.url(depth), shape: node_shape(v) )
+      @nodes.each do |_k, n|
+        node_to_subgraphs_map[n.uid].add_nodes(n.uid, label: n.name, URL: n.url(depth), shape: node_shape(n) )
       end
-      @edges.each do |_k, v|
-        g.add_edges(v.tail_node.uid, v.head_node.uid, label: v.label, URL: v.url, style: edge_style(v))
+      @edges.each do |_k, e|
+        g.add_edges(e.tail_node.uid, e.head_node.uid, label: e.label, URL: e.url, style: edge_style(e))
       end
       # Record which nodes have actually been added to the graph
       graphed_nodes = @nodes.values
       graphed_edges = @edges.values
     else
+      puts "starting_node = #{starting_node.uid}"
       next_nodes = Set.new [starting_node]
       # Get ready to record which nodes have actually been added to the graph
       graphed_nodes = Set.new
       graphed_edges = Set.new
 
-      # Bootstrap by adding the node at the first level manually
-      node_to_subgraphs[starting_node.uid].add_nodes(starting_node.name, URL: starting_node.url(depth), shape: node_shape(starting_node) ) unless graphed_nodes.add?(starting_node).nil?
+      # Bootstrap by adding the node at the first level manually, unless it's already been added
+      node_to_subgraphs_map[starting_node.uid].add_nodes(starting_node.uid, label: starting_node.name, URL: starting_node.url(depth), shape: node_shape(starting_node) ) unless graphed_nodes.add?(starting_node).nil?
 
       # Starting at the bootstrapped node at the first level, work our way out to each new level/degree-of-separation
       # Each time through, add the edges in next_nodes and then nodes at the end of the edges (the nodes at the next level)
       # "level" = degree of separation. 1 node at level 0, all it's neighbors at level 1, all their neighbors at level 2, etc
-      (depth - 1).times do |d|
+      (depth - 1).times do
        former_next_nodes = next_nodes
         next_nodes = Set.new
         former_next_nodes.each do |n|
-          in_e = Set.new n.incoming_edges
-          out_e = Set.new n.outgoing_edges
+          output_counts(n)
           # graph the edges at my level and the nodes at the next
-          puts "Adding #{(in_e | out_e).count} edges, #{(in_e - out_e).count} incoming, #{(out_e - in_e).count} outgoing, #{(in_e & out_e).count} both..."
-          n.incoming_edges.each do |_k, v|
-            graphed_edges.add?(v) && g.add_edges(v.tail_node.name, v.head_node.name, label: v.label, URL: v.url, style: edge_style(v))
-            graphed_nodes.add?(v.tail_node) && node_to_subgraphs[v.tail_node.uid].add_nodes(v.tail_node.name, URL: v.tail_node.url(depth), shape: node_shape(v.tail_node) )
-            next_nodes.add?(v.tail_node) # queue up the node at the next level
+          puts "++++"
+          n.incoming_edges.each do |_k, e|
+            add_node(e.tail_node, node_to_subgraphs_map, graphed_nodes, next_nodes, depth, g, starting_node)
+            add_edge(e, graphed_edges, g)
           end
-          n.outgoing_edges.each do |_k, v|
-            graphed_edges.add?(v) && g.add_edges(v.tail_node.name, v.head_node.name, label: v.label, URL: v.url, style: edge_style(v))
-            graphed_nodes.add?(v.head_node) && node_to_subgraphs[v.head_node.uid].add_nodes(v.head_node.name, URL: v.head_node.url(depth), shape: node_shape(v.head_node) )
-            next_nodes.add?(v.head_node)
+          puts '---'
+          n.outgoing_edges.each do |_k, e|
+            add_node(e.head_node, node_to_subgraphs_map, graphed_nodes, next_nodes, depth, g, starting_node)
+            add_edge(e, graphed_edges, g)
           end
+          puts "==="
         end
       end
     end
     [g, graphed_nodes, graphed_edges]
   end
 
-  # Creates a graphviz graph from arrays of edges and their nodes that match a port/protocol combination
-  def create_graphviz_for_similar_edges(properties_uid = nil, depth = @min_depth)
-    g = GraphViz.new('G', rankdir: 'LR', concentrate: 'false', remincross: 'true', ordering: 'out')
-    g.edge[:color] = 'grey30'
-    g.edge[:fontcolor] = 'blue'
+  # Given an arrays edges, a properties string, and an optional depth,
+  # finds all matching edges and returns a graphviz graph as well as the sets of
+  # edges and nodes that are present in the graph.
+  # Used to produce graphs per port/proto type (eg. ssh access)
+  def create_graphviz_graph_for_similar_edges(properties_uid = nil, depth = @min_depth)
+    g = init_graph()
 
-    # Subgraphs = graphviz clusters
-    node_to_subgraphs = generate_subgraph_clusters(g)
+    node_to_subgraphs_map = generate_cluster_subgraphs(g)
 
     graphed_nodes = Set.new
     graphed_edges = Set.new
 
-    edge_matches = @edges.select { |_k, v| v.properties_uid == properties_uid }
-    edge_matches.each do |_k, v|
-      node_to_subgraphs[v.tail_node.uid].add_nodes(v.tail_node.uid, label: v.tail_node.name, URL: v.tail_node.url(depth), shape: node_shape(v.tail_node) ) unless graphed_nodes.add?(v.tail_node).nil?
-      node_to_subgraphs[v.head_node.uid].add_nodes(v.head_node.uid, label: v.head_node.name, URL: v.head_node.url(depth), shape: node_shape(v.head_node) ) unless graphed_nodes.add?(v.head_node).nil?
-      g.add_edges(v.tail_node.uid, v.head_node.uid, label: v.label, URL: v.url, style: edge_style(v)) unless graphed_edges.add?(v).nil?
+    edge_matches = @edges.select { |_k, e| e.properties_uid == properties_uid }
+    edge_matches.each do |_k, e|
+      node_to_subgraphs_map[e.tail_node.uid].add_nodes(e.tail_node.uid, label: e.tail_node.name, URL: e.tail_node.url(depth), shape: node_shape(e.tail_node) ) unless graphed_nodes.add?(e.tail_node).nil?
+      node_to_subgraphs_map[e.head_node.uid].add_nodes(e.head_node.uid, label: e.head_node.name, URL: e.head_node.url(depth), shape: node_shape(e.head_node) ) unless graphed_nodes.add?(e.head_node).nil?
+      g.add_edges(e.tail_node.uid, e.head_node.uid, label: e.label, URL: e.url, style: edge_style(e)) unless graphed_edges.add?(e).nil?
     end
     [g, graphed_nodes, graphed_edges]
   end
 
+
+
+  ### File-building and output functions ###
+
   def output_individual_files_for_all_edges()
     # Build a list of all ids and filenames (with duplicates if port & protocol are the same but the nodes different)
-    uniq_properties_uids = @edges.map { |_k, v| [v.properties_uid, v.port_and_proto_file_name] }.uniq
+    uniq_properties_uids = @edges.map { |_k, e| [e.properties_uid, e.port_and_proto_file_name] }.uniq
     # Create files for each unique port/proto combo
     uniq_properties_uids.each { |x| output_files_for_individual_edge_type(x[0], x[1]) }
   end
@@ -223,7 +262,7 @@ class GraphvizWriter
     filename_no_extension = port_and_proto_file_name.to_s
     filepath_no_extension = "#{@output_dir}/#{filename_no_extension}"
     FileUtils.mkdir_p(@output_dir)
-    g, graphed_nodes, _graphed_edges = create_graphviz_for_similar_edges(properties_uid)
+    g, graphed_nodes, _graphed_edges = create_graphviz_graph_for_similar_edges(properties_uid)
     if edge_count > max_edge_count
       puts "Skipping creating graph for #{filename_no_extension} with #{node_count}/#{nodes.count} nodes and #{edge_count}/#{@edges.count} edges. Too many edges (it would take forever and the graph would be unusable)"
       # copy no-image-available-too-many-edges.png "#{filepath_no_extension}.png")
@@ -249,8 +288,8 @@ class GraphvizWriter
   end
 
   def output_individual_files_for_all_nodes(depth = @min_depth, maxdepth = nil)
-    @nodes.each do |_k, v|
-      output_files_for_individual_node(v, depth, maxdepth)
+    @nodes.each do |_k, n|
+      output_files_for_individual_node(n, depth, maxdepth)
     end
   end
 
@@ -264,7 +303,7 @@ class GraphvizWriter
       filename_no_extension = "#{node.file_name}-depth_#{current_depth}"
       filepath_no_extension = "#{@output_dir}/#{filename_no_extension}"
       puts "creating graph for #{filename_no_extension}..."
-      g, graphed_nodes, graphed_edges = create_graphviz(node, current_depth)
+      g, graphed_nodes, graphed_edges = create_graphviz_graph(node, current_depth)
       FileUtils.mkdir_p(@output_dir)
       write_out_asset_files(g, filepath_no_extension)
       File.open("#{filepath_no_extension}.html", 'w') do |f|
@@ -289,12 +328,13 @@ class GraphvizWriter
     filepath_no_extension = "#{@output_dir}/#{filename_no_extension}"
     FileUtils.mkdir_p(@output_dir)
     edge_count = edges.count
-    g, graphed_nodes, graphed_edges = create_graphviz
+    g, graphed_nodes, graphed_edges = create_graphviz_graph
     if edge_count > max_edge_count
       puts "Skipping creating graph for #{filename_no_extension} with #{nodes.count} nodes and #{edges.count} edges. Too many edges (it would take forever and the graph would be unusable)"
+      puts "Just writing a list of edges and nodes that would have been part of the graph"
     else
       puts "Creating graph with #{nodes.count} nodes and #{edges.count} edges."
-      g, graphed_nodes, graphed_edges = create_graphviz
+      g, graphed_nodes, graphed_edges = create_graphviz_graph
       puts "writing #{@output_dir}/#{filename_no_extension}.png"
       write_out_asset_files(g, filepath_no_extension)
       g.output(xdot: filepath_no_extension + '-xdot.gv')
@@ -313,6 +353,7 @@ class GraphvizWriter
     end
   end
 
+  # Writes graph data in all needed formats (image, map, dot file)
   def write_out_asset_files(g, filepath_no_extension, types=['png', 'cmap', 'dot'])
     types.each do |t|
       puts "writing #{filepath_no_extension}.#{t}"
@@ -320,6 +361,11 @@ class GraphvizWriter
     end
   end
 
+
+
+  ### HTML contructors ###
+
+  # Returns the appropriate html for an image with associate clickable map
   def image_with_map(filename_no_extension, filepath_no_extension)
     str  = "<img src='#{filename_no_extension}.png' usemap='#mainmap'>"
     str += '<map name="mainmap">'
@@ -327,6 +373,7 @@ class GraphvizWriter
     str += '</map><br>'
   end
 
+  # Returns the html for node and edge reference links
   def node_and_edge_links_footer(ns, es, current_depth)
     node_links_footer(ns, current_depth) + edge_links_footer(es)
   end
