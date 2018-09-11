@@ -4,8 +4,9 @@
 class Loader
 
   def initialize(*)
-    @nodes = {}
-    @edges = {}
+    @nodes = {}  # uid -> obj
+    @edges = {}  # uid -> obj
+    @clusters = {}  # uid -> obj
   end
 
   # Needs to be implemented
@@ -31,20 +32,27 @@ class Loader
     e
   end
 
-  def add_node(uid, name, type, node_class=Node)
-    puts "Adding #{type} node #{uid} (#{name})"
-    if @nodes[uid]
-      puts "Node already exists. Uid: " + uid
+  def add_and_addregate_generic(uid, name, type, obj_class, aggregator)
+    if aggregator[uid]
+      puts "#{obj_class} already exists. Uid: " + uid
       # sanity check
-      if @nodes[uid].type != type
-        raise "Existing node '#{uid}' type (#{@nodes[uid].type}) doesn't match new duplicate (supposedly) node's type (#{type})"
+      if aggregator[uid].type != type
+        raise "Existing #{obj_class} '#{uid}' type (#{aggregator[uid].type}) doesn't match new duplicate (supposedly) #{obj_class}'s type (#{type})"
       end
-      @nodes[uid]
+      aggregator[uid]
     else
-      n = node_class.new(uid, name, type)
-      n.type = type
-      @nodes[n.uid] = n
-      n
+      o = obj_class.new(uid, name, type)
+      o.type = type
+      aggregator[o.uid] = o
+      puts "Added #{obj_class} " + o.to_s
+      o
     end
+
+  def add_node(uid, name, type, node_class=Node)
+    add_and_addregate_generic(uid, name, type, node_class, @nodes)
+  end
+
+  def add_cluster(uid, name, type)
+    add_and_addregate_generic(uid, name, Cluster, @clusters)
   end
 end
