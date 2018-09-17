@@ -19,6 +19,8 @@ require 'aws-sdk'
 
 require_relative 'lib/manager'
 
+require_relative 'lib/cluster'
+
 require_relative 'lib/edges/edge'
 require_relative 'lib/edges/ec2_security_group_edge'
 require_relative 'lib/edges/ec2_security_group_instance_edge'

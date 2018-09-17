@@ -24,10 +24,6 @@ class AwsSecurityGroupLoader < Loader
     @elb2 = Aws::ElasticLoadBalancingV2::Client.new(region: args[:region])
     @rds = Aws::RDS::Resource.new(region: args[:region])
     @sts = Aws::STS::Client.new(region: args[:region])
-
-
-
-
   end
 
 

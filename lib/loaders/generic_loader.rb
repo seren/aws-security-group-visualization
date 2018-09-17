@@ -32,6 +32,7 @@ class Loader
     e
   end
 
+  # creates a node/cluster/etc and adds it to the tracking hash
   def add_and_addregate_generic(uid, name, type, obj_class, aggregator)
     if aggregator[uid]
       puts "#{obj_class} already exists. Uid: " + uid
