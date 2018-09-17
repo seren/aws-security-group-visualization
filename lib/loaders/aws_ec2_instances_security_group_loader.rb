@@ -9,13 +9,20 @@ class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
   end
 
   def load_groups
+    # for each meta-node (ex. instance)
+    #   for each sub-node (ex. security group)
+    #     for each sub-node-edge (ex. security group permission)
+    #       create edges from this meta-node to all other meta-nodes that have the end of the sub-node-edge inculded in their sub-nodes.
+
+note:     sg_nodes, sg_edges = super
+
     insts = @ec2.instances
     ## build a sg-id -> sg lookup table
-    sg_map = @ec2.security_groups.inject({}) {|h, sg| h[sg.id]=sg; h }
+    # sg_map = @ec2.security_groups.inject({}) {|h, sg| h[sg.id]=sg; h }
 
     ## build group_id -> [instances] map
     # initialize a hash of all groups with empty sets as values
-    instance_groups = Hash[sg_map.keys.map { |s| [s, Set.new] }]
+    instance_note: groups = Hash[sg_edges.keys.map { |s| [s, Set.new] }]
     insts.each do |i|
       i.security_groups.each do |g|
         gid = g.group_id
@@ -26,60 +33,47 @@ class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
       end
     end
 
-    # Take an instance, add it as a node, go through each perm in each group,
-    # and add an edge between that instance and the instances that have the source perm.
+
+    ########################
+    # Take an instance, add it as a node, go through each permmission in each group,
+    # and add an edge between that instance and the instances that have the source permmission.
     # Append the sec-group to the edge's metadata so we know where the permission came from
+    #
+    # Note: tail=src, head=dst
+
     puts insts
+
+    # First step, create nodes for all instances
     insts.each do |i|
-      dst_node = add_inst_node(i.id, instance_name(i), i.vpc_id || 'classic', 'instance', i)
-      dst_node.owner_id = ''
+      dst_inst_node = add_inst_node(i.id, instance_name(i), i.vpc_id || 'classic', 'instance', i)
+      dst_inst_node.owner_id = ''
+    end
 
-      sgs = i.security_groups.map { |g| sg_map[g.group_id] }
+    # for each instance-D (destination),
+    insts.each do |dst_inst|
+      # note: we assume the sg_edges uid keys are the same as the instance security group aws ids
+      instance_sgs = dst_inst.security_groups.map { |g| sg_nodes[g.group_id] }
+      # for each sg_node of instance-D
+      instance_sgs.each do |sg_node|
+        # for each sg_edge connecting the sg_node
+        sg_node.edges do |sg_edge|
+          src_sg_node = sg_edge.tail_node
 
-      sgs.each do |sg|
-        sg.ip_permissions.each do |p|
-          src_port = p.from_port || '0'
-          dst_port = p.to_port || '65535'
-          protocol = p.ip_protocol == '-1' ? 'all' : p.ip_protocol
-          edge_props = {
-            protocol: protocol,
-            port_start: src_port,
-            port_end: dst_port,
-            owner_id: ''
-          }
-          # Different logic for CIDRs vs AWS groups since they have different structures
 
-          # If permission from a CIDR...
-          if p.user_id_group_pairs.empty?
-            src_node_uid = p.ip_ranges.first.cidr_ip
-            src_node_name = src_node_uid
-            src_node = add_inst_node(src_node_uid, src_node_name, 'internet', 'cidr')
-            e = add_inst_edge(src_node, dst_node, edge_props, sg)
-            next
+          # Check the the src_inst exists in our list. If not, it's probably a CIDR or external security group which we haven't created a node for yet
+          if instance_groups[src_sg_node.uid].exists?
+            dst_inst_node = instance_groups[src_sg_node.uid]
+          else
+            # Sanity check to make sure we know the instance's type if we haven't processed it yet
+            src_sg_node.cidr? || src_sg_node.group? || raise("Not a CIDR and not an external group? What else could this source node be???")
+            dst_inst_node = add_inst_node(src_sg_node.uid, src_sg_node.name, src_sg_node.vpc_id, src_sg_node.type)
+            dst_inst_node.owner_id = src_sg_node.cidr? ? '' : src_sg_node.owner_id
           end
 
-          # If permission from an AWS group that we don't own...
-          if instance_groups[p.user_id_group_pairs.first.group_id].nil?
-            if p.user_id_group_pairs.first.peering_status == 'deleted'
-              puts "WARNING: Outdated permission found in group '#{dst_node.name}' (#{dst_node.uid}) to group #{p.user_id_group_pairs.first.group_id} in vpc '#{p.user_id_group_pairs.first.vpc_id}'. Peering has been deleted."
-              next
-            end
-            # groups can be owned by others (ex. elbs, rds, etc) in which case we can't look up our instances assigned to that group
-            src_node_owner_id = p.user_id_group_pairs.first.user_id
-            src_node_id = p.user_id_group_pairs.first.group_id
-            src_node_uid = src_node_owner_id + '/' + src_node_id
-            src_node_name = src_node_owner_id + '/' + ( p.user_id_group_pairs.first.group_name || src_node_id )
-            src_node = add_inst_node(src_node_uid, src_node_name, "account-#{src_node_owner_id}", 'external-security-group')
-            add_inst_edge(src_node, dst_node, edge_props, sg)
-            next
-          end
-
-          # If permission from an AWS group that we own, create connections to each instance that has that group assigned
-          instance_groups[p.user_id_group_pairs.first.group_id].each do |src_inst|
-            src_node_uid = src_inst.id
-            src_node_name = instance_name(src_inst)
-            src_node = add_inst_node(src_node_uid, src_node_name, src_inst.vpc_id || 'classic', 'instance')
-            add_inst_edge(src_node, dst_node, edge_props, sg)
+          # get all instances (instance-S) possessing the source/tail sg_node group
+          instance_groups[src_sg_node.uid].each do |src_inst|
+            # produce instance_edges from instance-D to instance-S
+            add_inst_edge(@nodes[src_inst.id], dst_inst_node, sg_edge.props, sg_edge)
           end
         end
       end
