@@ -48,6 +48,7 @@ class Loader
       puts "Added #{obj_class} " + o.to_s
       o
     end
+  end
 
   def add_node(uid, name, type, node_class=Node)
     add_and_aggregate_generic(uid, name, type, node_class, @nodes)
