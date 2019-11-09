@@ -69,10 +69,12 @@ class AwsSecurityGroupLoader < Loader
             if dst_node.owner_id == src_node_owner_id
               src_node_owner_id = group.user_id
               src_node_uid = group.group_id
-              src_node_name = groups[src_node_uid].group_name || src_node_uid
               if groups[src_node_uid].nil?
-                raise "Group '#{src_node_uid}' is not in our list of security groups, even though it was referenced by '#{dst_node.uid}'."
+                # raise "Group '#{src_node_uid}' is not in our list of security groups, even though it was referenced by '#{dst_node.uid}'. This permission is probably stale due to changes in a peered VPC."
+                puts "WARNING: Group '#{src_node_uid}' is not in our list of security groups, even though it was referenced by '#{dst_node.uid}'. '#{src_node_uid}' was probably in a different VPC in the same account and has been deleted."
+                next
               end
+              src_node_name = groups[src_node_uid].group_name || src_node_uid
               cluster_id = groups[src_node_uid].vpc_id || 'classic'
             # The groups are in different accounts
             else
