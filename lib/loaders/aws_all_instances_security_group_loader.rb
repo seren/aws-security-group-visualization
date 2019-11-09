@@ -58,44 +58,49 @@ class AwsAllInstancesSecurityGroupLoader < AwsSecurityGroupLoader
 
           dst_node = i.node
 
-          src_port = p.from_port || '0'
-          dst_port = p.to_port || '65535'
-          protocol = p.ip_protocol == '-1' ? 'all' : p.ip_protocol
           edge_props = {
-            protocol: protocol,
-            port_start: src_port,
-            port_end: dst_port,
-            owner_id: ''
+            protocol: p.ip_protocol == '-1' ? 'all' : p.ip_protocol,
+            port_start: p.from_port || '0',
+            port_end: p.to_port || '65535',
+            owner: ''
           }
 
           # Different logic for CIDRs vs AWS groups since they have different structures
 
-          # If permission from a CIDR...
           if p.user_id_group_pairs.empty?
-            src_i = CidrInstance.new(p)
-            src_node = add_inst_node(src_i)
-            e = add_inst_edge(src_node, dst_node, edge_props, sg)
-            next
-          end
-
-          # If permission from an AWS group that we don't own...
-          if instance_sgs[p.user_id_group_pairs.first.group_id].nil?
-            if p.user_id_group_pairs.first.peering_status == 'deleted'
-              puts "WARNING: Outdated permission found in group '#{dst_node.name}' (#{dst_node.uid}) to group #{p.user_id_group_pairs.first.group_id} in vpc '#{p.user_id_group_pairs.first.vpc_id}'. Peering has been deleted."
-              next
+            # If permission from a CIDR...
+            p.ip_ranges.each do |cidr|
+              src_i = CidrInstance.new(p, cidr)
+              src_node = add_inst_node(src_i)
+              e = add_inst_edge(src_node, dst_node, edge_props, sg)
             end
-            # groups can be owned by others (ex. elbs, rds, etc) in which case we can't look up our instances assigned to that group
-            src_i = ExternalInstance.new(p)
-            src_node = add_inst_node(src_i, 'external-security-group')
-            add_inst_edge(src_node, dst_node, edge_props, sg)
             next
+
+          else
+            # Permission is from a named-group
+            p.user_id_group_pairs.each do |group|
+
+              # If permission from an AWS group that we don't own...
+              if instance_sgs[group.group_id].nil?
+                if group.peering_status == 'deleted'
+                  puts "WARNING: Outdated permission found in group '#{dst_node.name}' (#{dst_node.uid}) to group #{group.group_id} in vpc '#{group.vpc_id}'. Peering has been deleted."
+                  next
+                end
+                # groups can be owned by others (ex. elbs, rds, etc) in which case we can't look up our instances assigned to that group
+                src_i = ExternalInstance.new(p, group)
+                src_node = add_inst_node(src_i, 'external-security-group')
+                add_inst_edge(src_node, dst_node, edge_props, sg)
+                next
+              end
+
+              # If permission from an AWS group that we own, create connections to each instance that has that group assigned
+              instance_sgs[group.group_id].each do |src_i|
+                src_node = add_inst_node(src_i,  insts_map[src_i.uid].type)
+                add_inst_edge(src_node, dst_node, edge_props, sg)
+              end
+            end
           end
 
-          # If permission from an AWS group that we own, create connections to each instance that has that group assigned
-          instance_sgs[p.user_id_group_pairs.first.group_id].each do |src_i|
-            src_node = add_inst_node(src_i,  insts_map[src_i.uid].type)
-            add_inst_edge(src_node, dst_node, edge_props, sg)
-          end
         end
       end
     end
