@@ -30,10 +30,10 @@ require_relative 'lib/nodes/ec2_security_group_node'
 
 require_relative 'lib/loaders/generic_loader'
 require_relative 'lib/loaders/aws_security_group_loader'
-require_relative 'lib/loaders/aws_ec2_instances_security_group_loader'
+# require_relative 'lib/loaders/aws_ec2_instances_security_group_loader'
 require_relative 'lib/loaders/aws_all_instances_security_group_loader'
-require_relative 'lib/loaders/manual_aws_security_group_loader'
-require_relative 'lib/loaders/manual_aws_instances_security_group_loader'
+# require_relative 'lib/loaders/manual_aws_security_group_loader'
+# require_relative 'lib/loaders/manual_aws_instances_security_group_loader'
 
 require_relative 'lib/writers/graphviz_writer'
 

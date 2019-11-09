@@ -14,8 +14,8 @@ class Manager
     loadermap = {
       security_groups: AwsSecurityGroupLoader,
       instance_security_groups: AwsAllInstancesSecurityGroupLoader,
-      manual: ManualAwsSecurityGroupLoader,
-      instance_manual: ManualAwsInstancesSecurityGroupLoader
+      # manual: ManualAwsSecurityGroupLoader,
+      # instance_manual: ManualAwsInstancesSecurityGroupLoader
     }
 
     puts @opts

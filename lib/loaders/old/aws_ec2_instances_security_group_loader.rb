@@ -9,12 +9,16 @@ class AwsEc2InstancesSecurityGroupLoader < AwsSecurityGroupLoader
   end
 
   def load_groups
+    # create cluster for the AWS account
     # for each meta-node (ex. instance)
+    # create a vpc cluster (if necessary) and make sure it's a child of the account cluster   TODO
     #   for each sub-node (ex. security group)
     #     for each sub-node-edge (ex. security group permission)
     #       create edges from this meta-node to all other meta-nodes that have the end of the sub-node-edge inculded in their sub-nodes.
+    #
+    #note:     sg_nodes, sg_edges = super
 
-note:     sg_nodes, sg_edges = super
+    add_cluster(aws_account_id, aws_account_id, 'aws_account')
 
     insts = @ec2.instances
     ## build a sg-id -> sg lookup table
@@ -22,7 +26,7 @@ note:     sg_nodes, sg_edges = super
 
     ## build group_id -> [instances] map
     # initialize a hash of all groups with empty sets as values
-    instance_note: groups = Hash[sg_edges.keys.map { |s| [s, Set.new] }]
+    instance_groups = Hash[sg_edges.keys.map { |s| [s, Set.new] }]
     insts.each do |i|
       i.security_groups.each do |g|
         gid = g.group_id
