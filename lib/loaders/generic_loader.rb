@@ -33,7 +33,7 @@ class Loader
   end
 
   # creates a node/cluster/etc and adds it to the tracking hash
-  def add_and_addregate_generic(uid, name, type, obj_class, aggregator)
+  def add_and_aggregate_generic(uid, name, type, obj_class, aggregator)
     if aggregator[uid]
       puts "#{obj_class} already exists. Uid: " + uid
       # sanity check
@@ -50,10 +50,10 @@ class Loader
     end
 
   def add_node(uid, name, type, node_class=Node)
-    add_and_addregate_generic(uid, name, type, node_class, @nodes)
+    add_and_aggregate_generic(uid, name, type, node_class, @nodes)
   end
 
   def add_cluster(uid, name, type)
-    add_and_addregate_generic(uid, name, Cluster, @clusters)
+    add_and_aggregate_generic(uid, name, 'cluster', Cluster, @clusters)
   end
 end

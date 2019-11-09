@@ -92,6 +92,7 @@ class AwsSecurityGroupLoader < Loader
   private
 
   def add_sg_edge(tail_node, head_node, edge_props, edge_data_source, edge_class=Ec2SecurityGroupEdge)
+    # sanity check
     unless tail_node && head_node && edge_props[:protocol] && edge_props[:port_start] && edge_props[:port_end]
       # debugging
       puts 'ERROR:'

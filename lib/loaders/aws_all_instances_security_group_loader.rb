@@ -15,7 +15,7 @@ class AwsAllInstancesSecurityGroupLoader < AwsSecurityGroupLoader
   def load_groups
     current_account_id = "acct" + @sts.get_caller_identity.account
 
-    ## build a sg-id -> sg lookup table
+    ## build an sg-id -> sg lookup table
     sg_map = @ec2.security_groups.inject({}) {|h, sg| h[sg.id]=sg; h }
 
     # Gather AWS entity info from multiple sources
@@ -29,7 +29,7 @@ class AwsAllInstancesSecurityGroupLoader < AwsSecurityGroupLoader
     ## build an instance uid -> aws instance lookup table
     insts_map = insts.inject ({}) { |acc, i| acc[i.uid] = i; acc }
 
-    ## build security_group_id -> [instances] lookup table
+    ## build an sg_id -> [instances] lookup table
     # initialize a hash of all groups with empty sets as values
     instance_sgs = Hash[sg_map.keys.map { |s| [s, Set.new] }]
     insts.each do |i|
