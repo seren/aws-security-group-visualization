@@ -6,7 +6,7 @@
 
 
 require 'rubygems'
-require 'graphviz'
+require 'ruby-graphviz'
 require 'set'
 require 'optparse'
 require 'ostruct'
