@@ -1,7 +1,7 @@
 class Cluster
   attr_accessor :uid, :name, :type, :parent_cluster, :child_clusters
 
-  # Lower numbers = more expansive (outer) groupsing
+  # Lower numbers encompass clusters with higher numbers
   @cluster_hierarchy = {
     account: 1,
     region: 2,
@@ -16,8 +16,9 @@ class Cluster
     self.child_clusters = []
   end
 
-  # True if this cluster's type is outside the given one
-  # (this cluster's priority is higher)
+  # True if this cluster's type encompasses the given one's type (this cluster's
+  # type has a lower hierarcy number). For example, an account cluster would
+  # contain a vpc cluster.
   def contains?(cluster)
     @cluster_hierarchy[self.type] > @cluster_hierarchy[cluster.type]
   end

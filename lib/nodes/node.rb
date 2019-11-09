@@ -21,9 +21,9 @@ class Node
     'node-' + sanitize_filename(uid)
   end
 
-  def simple_name
-    name.split('/')[0]
-  end
+  # def simple_name
+  #   name.split('/')[0]
+  # end
 
   def url(depth = nil)
     depth ? file_name + "-depth_#{depth}.html" : file_name + '.html'
