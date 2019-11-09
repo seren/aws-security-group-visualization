@@ -3,9 +3,9 @@ class Cluster
 
   # Lower numbers encompass clusters with higher numbers
   @cluster_hierarchy = {
-    account: 1,
-    region: 2,
-    vpc: 3
+    aws_account: 1,
+    aws_region: 2,
+    aws_vpc: 3
   }
 
 
